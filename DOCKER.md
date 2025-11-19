@@ -1,8 +1,8 @@
 # Docker Setup Guide
 
-This guide will help you set up and run the Vanguard application using Docker.
+This guide will help you run Vanguard using the pre-built Docker images that live in GitHub Container Registry.
 
-> **Quick Start:** Clone the repo, create a `.env` file with the settings below, then run `docker-compose up -d --build`. The entrypoint script handles everything automatically!
+> **Quick Start:** Clone the repo, create a `.env` file with the settings below, then run `docker-compose up -d`. No local build is required—the containers pull `ghcr.io/59n/vanguard:latest` automatically.
 
 ## Prerequisites
 
@@ -38,12 +38,6 @@ This guide will help you set up and run the Vanguard application using Docker.
    REDIS_PASSWORD=null
    
    QUEUE_CONNECTION=redis
-   
-   REVERB_SERVER_HOST=0.0.0.0
-   REVERB_SERVER_PORT=8080
-   REVERB_HOST=localhost
-   REVERB_PORT=8080
-   REVERB_SCHEME=http
    ```
    
    **Note:** The entrypoint script will automatically:
@@ -52,9 +46,14 @@ This guide will help you set up and run the Vanguard application using Docker.
    - Build frontend assets
    - Run database migrations
 
-3. **Start the containers:**
+3. **(Optional) Set a specific image tag (defaults to `latest`):**
    ```bash
-   docker-compose up -d --build
+   export VANGUARD_IMAGE=ghcr.io/59n/vanguard:main-<sha>
+   ```
+
+4. **Start the containers:**
+   ```bash
+   docker-compose up -d
    ```
    
    The entrypoint script will automatically:
@@ -64,7 +63,7 @@ This guide will help you set up and run the Vanguard application using Docker.
    - Run database migrations
    - Set up permissions
 
-4. **Wait for services to be ready** (usually 30-60 seconds):
+5. **Wait for services to be ready** (usually 30-60 seconds):
    ```bash
    # Check container status
    docker-compose ps
@@ -73,20 +72,19 @@ This guide will help you set up and run the Vanguard application using Docker.
    docker-compose logs -f app
    ```
 
-5. **Access the application**:
+6. **Access the application**:
    - Web: http://localhost
-   - Reverb WebSocket: ws://localhost:8080
    - Horizon Dashboard: http://localhost/horizon (requires authentication)
 
 **Note:** For production deployments with pre-built images, see the [Using Pre-built Images](#using-pre-built-images) section below.
 
 ## Using Pre-built Images
 
-The project automatically builds Docker images on GitHub and pushes them to GitHub Container Registry (ghcr.io).
+The project automatically builds multi-architecture images (linux/amd64 + linux/arm64) and publishes them to GitHub Container Registry: `ghcr.io/59n/vanguard`. The default `docker-compose.yml` already pulls this image, so no build step is necessary. See the published tags here: [ghcr.io/59n/vanguard](https://github.com/59n/vanguard/pkgs/container/vanguard).
 
 ### Authentication
 
-To pull pre-built images, authenticate with GitHub Container Registry:
+If the repository is private, authenticate with GitHub Container Registry:
 
 ```bash
 # Create a Personal Access Token at: https://github.com/settings/tokens
@@ -96,18 +94,17 @@ To pull pre-built images, authenticate with GitHub Container Registry:
 echo "YOUR_PAT_TOKEN" | docker login ghcr.io -u YOUR_GITHUB_USERNAME --password-stdin
 ```
 
-### Pulling and Using Pre-built Images
+### Pinning a Specific Image
 
 ```bash
-# Set your repository
-export GITHUB_REPOSITORY="vanguardbackup/vanguard"
-export DOCKER_IMAGE="ghcr.io/${GITHUB_REPOSITORY}:latest"
+# Use a specific tag (optional)
+export VANGUARD_IMAGE="ghcr.io/59n/vanguard:main-82f7734"
 
-# Pull the image
+# Pull the pinned image
 docker-compose pull
 
-# Start with pre-built image (no building)
-docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+# Start the stack
+docker-compose up -d
 ```
 
 ### Available Image Tags
@@ -118,39 +115,33 @@ docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d
 - `v1.0.0` - Semantic version tags
 - `main-<sha>` - Specific commit SHA
 
-View all tags at: `https://github.com/your-org/vanguard/pkgs/container/vanguard`
+View all tags at: `https://github.com/59n/vanguard/pkgs/container/vanguard`
+
+### Verify Image is Available
+
+```bash
+# Check if image exists
+docker pull ghcr.io/59n/vanguard:latest
+
+# Or view on GitHub
+# Visit: https://github.com/59n/vanguard/pkgs/container/vanguard
+```
 
 ## Services
 
-The Docker setup includes the following services:
+The simplified Docker stack now runs only the core services that are required in production:
 
-### Required Services (Core Functionality)
-- **app**: PHP-FPM application container ⚠️ **Required**
-- **nginx**: Web server ⚠️ **Required**
-- **postgres**: PostgreSQL 16 database ⚠️ **Required**
-- **redis**: Redis cache and queue ⚠️ **Required**
-- **horizon**: Laravel Horizon queue worker ⚠️ **Required** (for background jobs)
-
-### Optional Services (Development/Features)
-- **node**: Node.js for Vite development server 🔧 **Optional** (only for development)
-  - **High CPU usage is normal** - Vite dev server with hot-reload is CPU intensive
-  - **Not needed in production** - assets are pre-built
-  - **To disable**: Use `docker-compose.minimal.yml` or stop the service
-- **reverb**: Laravel Reverb WebSocket server 🔧 **Optional** (only if using real-time features)
-  - Only needed if you use WebSocket/broadcasting features
-  - Can be disabled if not using real-time updates
+- **app** (`ghcr.io/59n/vanguard`) – PHP-FPM container that runs the Laravel application and performs all bootstrap tasks automatically.
+- **nginx** – Serves HTTP traffic and proxies PHP requests to the app container.
+- **postgres** – PostgreSQL 16 database with persistent storage.
+- **redis** – Cache + queue backend shared by Laravel and Horizon.
+- **horizon** (`ghcr.io/59n/vanguard`) – Processes queued jobs so notifications, mailers, and other async tasks keep working.
 
 ### Resource Usage
 
-**Development Mode (all services):**
-- CPU: ~100-200% (mainly from `node` service with Vite)
-- Memory: ~800MB-1GB
-- This is **normal** for development with hot-reload
-
-**Production Mode (minimal services):**
-- CPU: ~5-20% (much lower without Vite dev server)
+- CPU: ~5-20% total across containers (depends on Horizon workload)
 - Memory: ~400-600MB
-- Use `docker-compose.minimal.yml` to exclude development services
+- Disk: ~2GB for images + growing PostgreSQL/Redis volumes
 
 ## Common Commands
 
@@ -184,11 +175,6 @@ docker-compose exec app php artisan [command]
 docker-compose exec app composer [command]
 ```
 
-### Run NPM commands
-```bash
-docker-compose exec node npm [command]
-```
-
 ### Access container shell
 ```bash
 docker-compose exec app bash
@@ -214,30 +200,21 @@ docker-compose exec app php artisan db:seed
 
 ## Development
 
-### Frontend Development
-
-For frontend development with hot reload, the `node` service runs Vite in development mode. Access it at http://localhost:5173.
-
 ### Queue Processing
 
 Laravel Horizon is automatically running in the `horizon` container. Monitor it at http://localhost/horizon (requires authentication).
 
-### WebSocket Server
-
-Laravel Reverb is running in the `reverb` container on port 8080.
 
 ## Environment Variables
 
-You can customize the setup using environment variables in your `.env` file or by creating a `.env.docker` file:
+You can customize the setup using environment variables in your `.env` file:
 
 - `APP_PORT`: Port for the PHP application (default: 8000)
 - `HTTP_PORT`: Port for Nginx (default: 80)
 - `HTTPS_PORT`: Port for HTTPS (default: 443)
 - `DB_PORT`: Port for PostgreSQL (default: 5432)
 - `REDIS_PORT`: Port for Redis (default: 6379)
-- `REVERB_PORT`: Port for Reverb (default: 8080)
-- `VITE_PORT`: Port for Vite dev server (default: 5173)
-- `DOCKER_IMAGE`: Pre-built Docker image to use (e.g., `ghcr.io/org/vanguard:latest`)
+- `VANGUARD_IMAGE`: Override the application image tag (default: `ghcr.io/59n/vanguard:latest`)
 
 ## Troubleshooting
 
@@ -285,51 +262,24 @@ docker-compose up -d
 
 For production deployment:
 
-1. **Use minimal services** - Exclude development-only services:
-   ```bash
-   # Stop node service (saves ~100-150% CPU)
-   docker-compose stop node
-   docker-compose rm node
-   
-   # Or use minimal compose file
-   docker-compose -f docker-compose.yml -f docker-compose.minimal.yml up -d
-   ```
-
-2. Set `APP_ENV=production` and `APP_DEBUG=false` in your `.env`
-
-3. Use strong database passwords
-
-4. Configure proper SSL/TLS certificates for Nginx
-
-5. Set up proper backup strategies for PostgreSQL data
-
-6. Consider using Docker secrets for sensitive data
-
-7. Review and adjust resource limits in `docker-compose.yml`
-
-8. Use a reverse proxy (like Traefik) for better SSL management
-
-9. Use pre-built images from GitHub Container Registry for faster deployments
+1. Set `APP_ENV=production` and `APP_DEBUG=false` in your `.env`.
+2. Use strong database credentials and rotate them regularly.
+3. Configure proper SSL/TLS certificates for Nginx (or front it with your preferred reverse proxy).
+4. Back up the `postgres_data` volume on a schedule.
+5. Consider Docker secrets or an external secret manager for sensitive configuration.
+6. Review resource limits and add `deploy.resources` constraints if you orchestrate with Swarm or Kubernetes.
+7. Keep `VANGUARD_IMAGE` pinned to a known-good tag for deterministic rollouts.
 
 ### Reducing Resource Usage
 
-**To reduce CPU usage:**
-```bash
-# Stop the node service (Vite dev server)
-docker-compose stop node
-
-# Or exclude it when starting
-docker-compose up -d app nginx postgres redis horizon
-```
-
-**To reduce memory usage:**
-- Use production mode (`APP_ENV=production`)
-- Disable debug mode (`APP_DEBUG=false`)
-- Stop unused services (node, reverb if not needed)
+- Scale down Horizon workers by setting `HORIZON_SUPERVISOR_MAX_PROCESSES` via `.env`.
+- Stop containers you do not need temporarily: `docker-compose stop horizon`.
+- Use `docker-compose down --volumes` only when you intentionally want a clean slate (destroys DB + cache).
 
 ## Data Persistence
 
 Data is persisted in Docker volumes:
+- `app_code`: Application code + compiled assets copied from the image (also stores `storage/` + `bootstrap/cache`)
 - `postgres_data`: PostgreSQL database data
 - `redis_data`: Redis data
 
@@ -376,9 +326,22 @@ docker-compose logs --tail=50
 
 ## GitHub Actions
 
-Docker images are automatically built and pushed to GitHub Container Registry on:
+Docker images are **automatically built and pushed** to GitHub Container Registry on:
 - Push to `main` or `develop` branches
 - Creation of version tags (e.g., `v1.0.0`)
 - Manual workflow dispatch
+
+**The image is already pushed!** No manual action needed.
+
+### View Your Images
+
+- **On GitHub**: https://github.com/59n/vanguard/pkgs/container/vanguard
+- **Pull the image**: `docker pull ghcr.io/59n/vanguard:latest`
+
+### Image Location
+
+Images are automatically available at:
+- `ghcr.io/59n/vanguard:latest` (your fork)
+- After merge: `ghcr.io/vanguardbackup/vanguard:latest` (main repo)
 
 The workflow file is located at `.github/workflows/docker-build.yml`.
