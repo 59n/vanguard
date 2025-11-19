@@ -55,11 +55,8 @@ RUN curl -fsSL --max-time 60 --retry 3 https://deb.nodesource.com/setup_20.x | b
 COPY docker-entrypoint.sh /usr/local/bin/
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 
-# Copy application files
+# Copy application files (ownership already set by --chown)
 COPY --chown=www-data:www-data . /var/www/html
-
-# Set proper permissions
-RUN chown -R www-data:www-data /var/www/html
 
 # Switch to www-data user
 USER www-data
