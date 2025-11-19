@@ -37,7 +37,55 @@ Vanguard is an open-source Laravel project that provides an easy-to-use solution
 
 For detailed installation instructions and system requirements, please visit our [official documentation](https://docs.vanguardbackup.com/installation).
 
-Quick start:
+### Installation Options
+
+**Option 1: Docker (Recommended for Quick Start)**
+
+Vanguard now includes full Docker support with automatic setup:
+
+```bash
+# Clone the repository
+git clone https://github.com/vanguardbackup/vanguard.git
+cd vanguard
+
+# Create .env file with Docker settings
+cat > .env << EOF
+APP_NAME=Vanguard
+APP_ENV=local
+APP_DEBUG=true
+APP_URL=http://localhost
+DB_CONNECTION=pgsql
+DB_HOST=postgres
+DB_PORT=5432
+DB_DATABASE=vanguard
+DB_USERNAME=postgres
+DB_PASSWORD=password
+REDIS_HOST=redis
+REDIS_PORT=6379
+QUEUE_CONNECTION=redis
+REVERB_SERVER_HOST=0.0.0.0
+REVERB_SERVER_PORT=8080
+REVERB_HOST=localhost
+REVERB_PORT=8080
+REVERB_SCHEME=http
+EOF
+
+# Start all services
+docker-compose up -d --build
+
+# Access the application at http://localhost
+```
+
+The Docker setup automatically handles:
+- Dependency installation
+- Asset building
+- Database migrations
+- Application key generation
+
+For detailed Docker documentation, see [DOCKER.md](DOCKER.md).
+
+**Option 2: Traditional Installation**
+
 1. Clone the repository
 2. Follow the step-by-step guide in our [documentation](https://docs.vanguardbackup.com/installation)
 

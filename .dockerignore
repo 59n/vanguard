@@ -23,3 +23,6 @@ Thumbs.db
 *.swo
 *~
 .github
+*.md
+!README.md
+validate-docker-env.sh

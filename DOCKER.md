@@ -2,30 +2,36 @@
 
 This guide will help you set up and run the Vanguard application using Docker.
 
+> **Quick Start:** Clone the repo, create a `.env` file with the settings below, then run `docker-compose up -d --build`. The entrypoint script handles everything automatically!
+
 ## Prerequisites
 
-- Docker Desktop (or Docker Engine + Docker Compose)
-- Git
+- **Docker Desktop** (macOS/Windows) or **Docker Engine + Docker Compose** (Linux)
+- **Git** (for cloning the repository)
+- **4GB+ RAM** recommended
+- **10GB+ free disk space** for images and volumes
 
 ## Quick Start
 
-1. **Copy environment file** (if you have one):
+1. **Create your `.env` file** (if it doesn't exist):
    ```bash
-   cp .env.example .env
+   # The entrypoint script will generate APP_KEY automatically if missing
+   touch .env
    ```
 
 2. **Update your `.env` file** with the following Docker-specific settings:
    ```env
+   APP_NAME=Vanguard
    APP_ENV=local
    APP_DEBUG=true
    APP_URL=http://localhost
    
-   DB_CONNECTION=mysql
+   DB_CONNECTION=pgsql
    DB_HOST=postgres
-   DB_PORT=3306
+   DB_PORT=5432
    DB_DATABASE=vanguard
-   DB_USERNAME=vanguard
-   DB_PASSWORD=vanguard
+   DB_USERNAME=postgres
+   DB_PASSWORD=password
    
    REDIS_HOST=redis
    REDIS_PORT=6379
@@ -33,44 +39,46 @@ This guide will help you set up and run the Vanguard application using Docker.
    
    QUEUE_CONNECTION=redis
    
-   REVERB_SERVER_HOST=reverb
+   REVERB_SERVER_HOST=0.0.0.0
    REVERB_SERVER_PORT=8080
    REVERB_HOST=localhost
    REVERB_PORT=8080
    REVERB_SCHEME=http
    ```
-
-3. **Choose your deployment method:**
-
-   **Option A: Use pre-built Docker images (Recommended)**
-   ```bash
-   # Set your GitHub repository (replace with your actual repo)
-   export GITHUB_REPOSITORY="your-org/vanguard"
-   export DOCKER_IMAGE="ghcr.io/${GITHUB_REPOSITORY}:latest"
    
-   # Pull and start containers
-   docker-compose pull
-   docker-compose up -d
-   ```
+   **Note:** The entrypoint script will automatically:
+   - Generate `APP_KEY` if missing
+   - Install dependencies
+   - Build frontend assets
+   - Run database migrations
 
-   **Option B: Build images locally**
+3. **Start the containers:**
    ```bash
    docker-compose up -d --build
    ```
+   
+   The entrypoint script will automatically:
+   - Install PHP and Node dependencies
+   - Build frontend assets
+   - Generate application key (if missing)
+   - Run database migrations
+   - Set up permissions
 
-4. **Run database migrations**:
+4. **Wait for services to be ready** (usually 30-60 seconds):
    ```bash
-   docker-compose exec app php artisan migrate
+   # Check container status
+   docker-compose ps
+   
+   # View logs to see initialization progress
+   docker-compose logs -f app
    ```
 
-5. **Create application key** (if not already set):
-   ```bash
-   docker-compose exec app php artisan key:generate
-   ```
-
-6. **Access the application**:
+5. **Access the application**:
    - Web: http://localhost
    - Reverb WebSocket: ws://localhost:8080
+   - Horizon Dashboard: http://localhost/horizon (requires authentication)
+
+**Note:** For production deployments with pre-built images, see the [Using Pre-built Images](#using-pre-built-images) section below.
 
 ## Using Pre-built Images
 
@@ -78,18 +86,21 @@ The project automatically builds Docker images on GitHub and pushes them to GitH
 
 ### Pulling Latest Image
 
+After images are built and pushed to GitHub Container Registry (see [DOCKER_SETUP.md](DOCKER_SETUP.md) for authentication):
+
 ```bash
-# Set your repository
-export GITHUB_REPOSITORY="your-org/vanguard"
+# Set your repository (replace with actual GitHub org/repo)
+export GITHUB_REPOSITORY="vanguardbackup/vanguard"
 export DOCKER_IMAGE="ghcr.io/${GITHUB_REPOSITORY}:latest"
 
 # Login to GitHub Container Registry (first time only)
-echo $GITHUB_TOKEN | docker login ghcr.io -u USERNAME --password-stdin
+# See DOCKER_SETUP.md for detailed authentication instructions
+echo "YOUR_PAT_TOKEN" | docker login ghcr.io -u YOUR_USERNAME --password-stdin
 
-# Pull the image
+# Pull the pre-built image
 docker-compose pull
 
-# Start containers
+# Start containers (will use pre-built image instead of building)
 docker-compose up -d
 ```
 

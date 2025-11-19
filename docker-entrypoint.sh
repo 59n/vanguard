@@ -38,52 +38,53 @@ chmod -R 775 /var/www/html/storage /var/www/html/bootstrap/cache 2>/dev/null || 
 
 # Only run initialization for main app service (php-fpm)
 if [[ "$COMMAND" == "php-fpm" ]]; then
+    cd /var/www/html || exit 1
+    
     # Install dependencies if vendor doesn't exist
     if [ ! -d "vendor" ]; then
         echo "Installing PHP dependencies..."
-        composer install --no-interaction --prefer-dist
+        su -s /bin/bash - www-data -c "cd /var/www/html && composer install --no-interaction --prefer-dist" || composer install --no-interaction --prefer-dist
     fi
 
     # Install Node dependencies if node_modules doesn't exist
     if [ ! -d "node_modules" ]; then
         echo "Installing Node dependencies..."
-        npm install
+        su -s /bin/bash - www-data -c "cd /var/www/html && npm install" || npm install
     fi
 
     # Build frontend assets if not in development mode or if build doesn't exist
     if [ "$APP_ENV" != "local" ] || [ ! -f "public/build/manifest.json" ]; then
         echo "Building frontend assets..."
-        npm run build || true
+        su -s /bin/bash - www-data -c "cd /var/www/html && npm run build" || npm run build || true
     fi
 
     # Generate application key if not set
     if [ -z "$APP_KEY" ] || [ "$APP_KEY" == "" ]; then
         echo "Generating application key..."
-        php artisan key:generate --force || true
+        su -s /bin/bash - www-data -c "cd /var/www/html && php artisan key:generate --force" || php artisan key:generate --force || true
     fi
 
     # Run migrations (only if not already run)
-    if php artisan migrate:status > /dev/null 2>&1; then
+    if su -s /bin/bash - www-data -c "cd /var/www/html && php artisan migrate:status" > /dev/null 2>&1 || php artisan migrate:status > /dev/null 2>&1; then
         echo "Database migrations already run."
     else
         echo "Running migrations..."
-        php artisan migrate --force || true
+        su -s /bin/bash - www-data -c "cd /var/www/html && php artisan migrate --force" || php artisan migrate --force || true
     fi
 
     # Clear and cache config
-    php artisan config:clear || true
-    php artisan cache:clear || true
-    php artisan route:clear || true
-    php artisan view:clear || true
+    su -s /bin/bash - www-data -c "cd /var/www/html && php artisan config:clear" || php artisan config:clear || true
+    su -s /bin/bash - www-data -c "cd /var/www/html && php artisan cache:clear" || php artisan cache:clear || true
+    su -s /bin/bash - www-data -c "cd /var/www/html && php artisan route:clear" || php artisan route:clear || true
+    su -s /bin/bash - www-data -c "cd /var/www/html && php artisan view:clear" || php artisan view:clear || true
 
     # Cache config for production
     if [ "$APP_ENV" = "production" ]; then
-        php artisan config:cache || true
-        php artisan route:cache || true
-        php artisan view:cache || true
+        su -s /bin/bash - www-data -c "cd /var/www/html && php artisan config:cache" || php artisan config:cache || true
+        su -s /bin/bash - www-data -c "cd /var/www/html && php artisan route:cache" || php artisan route:cache || true
+        su -s /bin/bash - www-data -c "cd /var/www/html && php artisan view:cache" || php artisan view:cache || true
     fi
 fi
 
 # Execute the main command
 exec "$@"
-
