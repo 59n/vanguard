@@ -84,43 +84,41 @@ This guide will help you set up and run the Vanguard application using Docker.
 
 The project automatically builds Docker images on GitHub and pushes them to GitHub Container Registry (ghcr.io).
 
-### Pulling Latest Image
+### Authentication
 
-After images are built and pushed to GitHub Container Registry (see [DOCKER_SETUP.md](DOCKER_SETUP.md) for authentication):
+To pull pre-built images, authenticate with GitHub Container Registry:
 
 ```bash
-# Set your repository (replace with actual GitHub org/repo)
+# Create a Personal Access Token at: https://github.com/settings/tokens
+# Select scope: read:packages
+
+# Login
+echo "YOUR_PAT_TOKEN" | docker login ghcr.io -u YOUR_GITHUB_USERNAME --password-stdin
+```
+
+### Pulling and Using Pre-built Images
+
+```bash
+# Set your repository
 export GITHUB_REPOSITORY="vanguardbackup/vanguard"
 export DOCKER_IMAGE="ghcr.io/${GITHUB_REPOSITORY}:latest"
 
-# Login to GitHub Container Registry (first time only)
-# See DOCKER_SETUP.md for detailed authentication instructions
-echo "YOUR_PAT_TOKEN" | docker login ghcr.io -u YOUR_USERNAME --password-stdin
-
-# Pull the pre-built image
+# Pull the image
 docker-compose pull
 
-# Start containers (will use pre-built image instead of building)
-docker-compose up -d
+# Start with pre-built image (no building)
+docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d
 ```
 
 ### Available Image Tags
 
-Images are tagged with:
-- `latest` - Latest build from main branch
+- `latest` - Latest from main branch
 - `main` - Latest from main branch
 - `develop` - Latest from develop branch
 - `v1.0.0` - Semantic version tags
 - `main-<sha>` - Specific commit SHA
 
-### Using Production Compose File
-
-For production, use the production compose override:
-
-```bash
-export DOCKER_IMAGE="ghcr.io/your-org/vanguard:latest"
-docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d
-```
+View all tags at: `https://github.com/your-org/vanguard/pkgs/container/vanguard`
 
 ## Services
 
@@ -359,19 +357,21 @@ docker-compose down -v
 
 ## Testing
 
-For comprehensive testing instructions, see [DOCKER_TESTING.md](DOCKER_TESTING.md).
-
-### Quick Test
-
 ```bash
-# Run the quick test script
-./QUICK_TEST.sh
-
-# Or manually check services
+# Check services are running
 docker-compose ps
+
+# Test web server
 curl -I http://localhost
+
+# Test database
 docker-compose exec postgres pg_isready -U postgres
+
+# Test Redis
 docker-compose exec redis redis-cli ping
+
+# Check logs
+docker-compose logs --tail=50
 ```
 
 ## GitHub Actions
