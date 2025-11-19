@@ -37,9 +37,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Redis extension
-RUN pecl install redis \
+RUN pecl install -o -f redis \
     && docker-php-ext-enable redis \
-    && rm -rf /tmp/pear
+    && rm -rf /tmp/pear \
+    && rm -rf /usr/src/php/ext/redis
 
 # Install Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
