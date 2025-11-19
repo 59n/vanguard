@@ -4,7 +4,7 @@ FROM php:8.3-fpm
 WORKDIR /var/www/html
 
 # Install system dependencies
-RUN apt-get update && apt-get install -y \
+RUN apt-get update && apt-get install -y --no-install-recommends \
     git \
     curl \
     libpng-dev \
@@ -32,27 +32,33 @@ RUN apt-get update && apt-get install -y \
     zip \
     intl \
     opcache \
-    && docker-php-ext-enable opcache
+    && docker-php-ext-enable opcache \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
 
 # Install Redis extension
-RUN pecl install redis && docker-php-ext-enable redis
+RUN pecl install redis \
+    && docker-php-ext-enable redis \
+    && rm -rf /tmp/pear
 
 # Install Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
 # Install Node.js and npm
 RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
-    && apt-get install -y nodejs
+    && apt-get install -y nodejs \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
 
-# Copy existing application directory permissions
-RUN chown -R www-data:www-data /var/www/html
-
-# Copy entrypoint script
+# Copy entrypoint script first (before switching users)
 COPY docker-entrypoint.sh /usr/local/bin/
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 
 # Copy application files
 COPY --chown=www-data:www-data . /var/www/html
+
+# Set proper permissions
+RUN chown -R www-data:www-data /var/www/html
 
 # Switch to www-data user
 USER www-data
