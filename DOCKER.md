@@ -126,13 +126,33 @@ docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d
 
 The Docker setup includes the following services:
 
-- **app**: PHP-FPM application container
-- **nginx**: Web server
-- **postgres**: PostgreSQL 16 database
-- **redis**: Redis cache and queue
-- **horizon**: Laravel Horizon queue worker
-- **reverb**: Laravel Reverb WebSocket server
-- **node**: Node.js for Vite development server (optional)
+### Required Services (Core Functionality)
+- **app**: PHP-FPM application container ⚠️ **Required**
+- **nginx**: Web server ⚠️ **Required**
+- **postgres**: PostgreSQL 16 database ⚠️ **Required**
+- **redis**: Redis cache and queue ⚠️ **Required**
+- **horizon**: Laravel Horizon queue worker ⚠️ **Required** (for background jobs)
+
+### Optional Services (Development/Features)
+- **node**: Node.js for Vite development server 🔧 **Optional** (only for development)
+  - **High CPU usage is normal** - Vite dev server with hot-reload is CPU intensive
+  - **Not needed in production** - assets are pre-built
+  - **To disable**: Use `docker-compose.minimal.yml` or stop the service
+- **reverb**: Laravel Reverb WebSocket server 🔧 **Optional** (only if using real-time features)
+  - Only needed if you use WebSocket/broadcasting features
+  - Can be disabled if not using real-time updates
+
+### Resource Usage
+
+**Development Mode (all services):**
+- CPU: ~100-200% (mainly from `node` service with Vite)
+- Memory: ~800MB-1GB
+- This is **normal** for development with hot-reload
+
+**Production Mode (minimal services):**
+- CPU: ~5-20% (much lower without Vite dev server)
+- Memory: ~400-600MB
+- Use `docker-compose.minimal.yml` to exclude development services
 
 ## Common Commands
 
@@ -267,14 +287,47 @@ docker-compose up -d
 
 For production deployment:
 
-1. Set `APP_ENV=production` and `APP_DEBUG=false` in your `.env`
-2. Use strong database passwords
-3. Configure proper SSL/TLS certificates for Nginx
-4. Set up proper backup strategies for PostgreSQL data
-5. Consider using Docker secrets for sensitive data
-6. Review and adjust resource limits in `docker-compose.yml`
-7. Use a reverse proxy (like Traefik) for better SSL management
-8. Use pre-built images from GitHub Container Registry for faster deployments
+1. **Use minimal services** - Exclude development-only services:
+   ```bash
+   # Stop node service (saves ~100-150% CPU)
+   docker-compose stop node
+   docker-compose rm node
+   
+   # Or use minimal compose file
+   docker-compose -f docker-compose.yml -f docker-compose.minimal.yml up -d
+   ```
+
+2. Set `APP_ENV=production` and `APP_DEBUG=false` in your `.env`
+
+3. Use strong database passwords
+
+4. Configure proper SSL/TLS certificates for Nginx
+
+5. Set up proper backup strategies for PostgreSQL data
+
+6. Consider using Docker secrets for sensitive data
+
+7. Review and adjust resource limits in `docker-compose.yml`
+
+8. Use a reverse proxy (like Traefik) for better SSL management
+
+9. Use pre-built images from GitHub Container Registry for faster deployments
+
+### Reducing Resource Usage
+
+**To reduce CPU usage:**
+```bash
+# Stop the node service (Vite dev server)
+docker-compose stop node
+
+# Or exclude it when starting
+docker-compose up -d app nginx postgres redis horizon
+```
+
+**To reduce memory usage:**
+- Use production mode (`APP_ENV=production`)
+- Disable debug mode (`APP_DEBUG=false`)
+- Stop unused services (node, reverb if not needed)
 
 ## Data Persistence
 
@@ -302,6 +355,23 @@ docker-compose down
 To stop, remove containers, and volumes:
 ```bash
 docker-compose down -v
+```
+
+## Testing
+
+For comprehensive testing instructions, see [DOCKER_TESTING.md](DOCKER_TESTING.md).
+
+### Quick Test
+
+```bash
+# Run the quick test script
+./QUICK_TEST.sh
+
+# Or manually check services
+docker-compose ps
+curl -I http://localhost
+docker-compose exec postgres pg_isready -U postgres
+docker-compose exec redis redis-cli ping
 ```
 
 ## GitHub Actions
