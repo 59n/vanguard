@@ -46,14 +46,14 @@ if [[ "$COMMAND" == "php-fpm" ]]; then
         su -s /bin/bash - www-data -c "cd /var/www/html && composer install --no-interaction --prefer-dist" || composer install --no-interaction --prefer-dist
     fi
 
-    # Install Node dependencies if node_modules doesn't exist
-    if [ ! -d "node_modules" ]; then
+    # Install Node dependencies if node_modules doesn't exist or is empty
+    if [ ! -d "node_modules" ] || [ -z "$(ls -A node_modules 2>/dev/null)" ]; then
         echo "Installing Node dependencies..."
         su -s /bin/bash - www-data -c "cd /var/www/html && npm install" || npm install
     fi
 
-    # Build frontend assets if not in development mode or if build doesn't exist
-    if [ "$APP_ENV" != "local" ] || [ ! -f "public/build/manifest.json" ]; then
+    # Build frontend assets if build doesn't exist (always build for production, or if missing in local)
+    if [ ! -f "public/build/manifest.json" ]; then
         echo "Building frontend assets..."
         su -s /bin/bash - www-data -c "cd /var/www/html && npm run build" || npm run build || true
     fi

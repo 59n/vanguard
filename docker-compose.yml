@@ -127,6 +127,8 @@ services:
     image: node:20-alpine
     container_name: vanguard_node
     restart: unless-stopped
+    profiles:
+      - dev
     working_dir: /var/www/html
     volumes:
       - ./:/var/www/html
