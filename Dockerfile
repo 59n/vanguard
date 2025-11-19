@@ -39,15 +39,15 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Install Redis extension
 RUN pecl install -o -f redis \
     && docker-php-ext-enable redis \
-    && rm -rf /tmp/pear \
-    && rm -rf /usr/src/php/ext/redis
+    && rm -rf /tmp/pear
 
 # Install Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
 # Install Node.js and npm
-RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
-    && apt-get install -y nodejs \
+RUN curl -fsSL --max-time 60 --retry 3 https://deb.nodesource.com/setup_20.x | bash - \
+    && apt-get update \
+    && apt-get install -y --no-install-recommends nodejs \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 

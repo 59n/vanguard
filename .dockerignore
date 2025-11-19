@@ -6,6 +6,7 @@
 .phpunit.result.cache
 docker-compose.yml
 docker-compose.prod.yml
+docker-compose.minimal.yml
 .dockerignore
 node_modules
 npm-debug.log
@@ -26,3 +27,5 @@ Thumbs.db
 *.md
 !README.md
 validate-docker-env.sh
+tests
+.phpunit.cache
